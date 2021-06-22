@@ -1,66 +1,117 @@
 from matplotlib import pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
-import formatter
+from formatter import extract
+from axes_setup import *
+from scipy.interpolate import interp1d
 from scipy.signal import savgol_filter
 
-# print(plt.style.available)
-# plt.xkcd()
-# plt.style.use('seaborn-dark')
+def plot_graph():
 
-todo = ['harman.txt', 'zk.txt', 'hh.txt']
+    rec_iems = ['fqq']  # list of names from phonebook returned by search function
+    # find file name and make another list for it
+    rec_ref = []
+    rec_baseline = ''
+    zoom = None
+    
+    iems = []
+    ref = []
+    
+    plt.axvline(x=200, color='k', lw=1)
+    plt.axvline(x=2000, color='k', lw=1)
 
-for chart in todo:
-    formatter.clear(chart)
+    class iem:
+        def __init__ (self, device_name): # get filename as argument as well
+            self.name = device_name # find from phonebook
+            # self.filename = find from phonebook
+            self.x, self.y = extract(device_name) # replace device_name with self.filename
+            try:
+                self.f = interp1d(self.x, self.y, kind='linear')
+                self.unfilt_new_y = self.f(new_x)
+                self.file = 1
+            except:
+                self.file = 0
 
-    x=formatter.axisx
-    y=formatter.axisy
 
-    yhat = savgol_filter(y, 51, 8)
+    new_x = np.geomspace(20, 20000, 20000)
 
-    ax = plt.plot(x, yhat, lw=2, label=chart)
-    formatter.axisx.clear()
-    formatter.axisy.clear()
+    # gathering data
+    i = 0
+    for device in rec_iems:
+        iems.append(iem(device))
+        if not iems[i].file:
+            print(f'Files for {iems[i].name} missing')
+            return
+        i += 1
 
+    r = 0
+    for reference in rec_ref:
+        ref.append(iem(reference))
+        if not ref[i].file:
+            print(f'Files for {ref[i].name} missing')
+            return
+        r += 1
 
-majorvalues = [0, 20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 
-600, 800, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 15000, 20000]
-majorlabels = [0, 20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 
-600, 800, '1k', '1.5k', '2k', '3k', '4k', '5k', '6k', '8k', '10k', '15k', '20k']
-majorvaluey = [30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85]
+    #normalizing 1000Hz at 60dB
+    normal = 1000
+    at = 60
 
-plt.xscale("log")
+    for iem in iems:
+        dB_1000 = iem.f(normal) - at
+        for value in range(len(iem.unfilt_new_y)):
+            iem.unfilt_new_y[value] = iem.unfilt_new_y[value] - dB_1000
 
-ax = plt.gca()
-ax.xaxis.set_major_locator(ticker.FixedLocator((majorvalues)))
-ax.xaxis.set_major_formatter(ticker.FixedFormatter((majorlabels)))
-ax.set_xlim(20, 20000)
+    #baselining
+    if rec_baseline:
+        baseline = iem(rec_baseline)
+        if not baseline.file:
+            print(f'Files for {baseline.name} missing')
+            return
+        for iem in iems:
+            for i in range(len(iem.unfilt_new_y)):
+                iem.unfilt_new_y[i] -= baseline.unfilt_new_y[i]
+                iem.unfilt_new_y[i] += 60
+        for reference in ref:
+            for i in range(len(iem.unfilt_new_y)):
+                reference.unfilt_new_y[i] -= baseline.unfilt_new_y[i]
+                reference.unfilt_new_y[i] += 60
 
-ax.yaxis.set_major_locator(ticker.FixedLocator((majorvaluey)))
-ax.yaxis.set_major_formatter(ticker.FixedFormatter((majorvaluey)))
-ax.set_ylim(30, 85)
+    #plotting data
+    for reference in ref:
+        new_y = savgol_filter(reference.unfilt_new_y, 301, 3)
+        ax = plt.plot(new_x, new_y, lw=2.2, label=reference.name, color='#9ea0a6', linestyle='--')
 
-zoom = input('Zoom: ')
+    for iem in iems:
+        new_y = savgol_filter(iem.unfilt_new_y, 301, 3)
+        ax = plt.plot(new_x, new_y, lw=2.2, label=iem.name)
 
-if zoom == 'bass':
-    ax.set_xlim(20, 400)
-elif zoom == 'mids':
-    ax.set_xlim(100, 4000)
-elif zoom == 'treble':
-    ax.set_xlim(1000, 20000)
+    if rec_baseline:
+        ax = plt.plot([20, 20000], [60, 60], lw=2.2, label=baseline.name, color='#9ea0a6', linestyle='--')
 
-plt.axvline(x=200, color='k', lw=1)
-plt.axvline(x=2000, color='k', lw=1)
+    plt.xscale("log")
 
-figure = plt.gcf()
-figure.set_size_inches(16, 7.45)
+    ax = plt.gca() #getting the current axes
+    setter(ax, ticker, plt)
 
-plt.title('Graph')
-plt.xlabel('Frequency')
-plt.ylabel('Decibals')
-plt.legend()
+    # zooming
+    if zoom == 'bass':
+        ax.set_xlim(20, 400)
+    elif zoom == 'mids':
+        ax.set_xlim(100, 4000)
+    elif zoom == 'treble':
+        ax.set_xlim(1000, 20000)
 
-plt.grid(True)
-plt.tight_layout()
-plt.savefig('plot.png', dpi=100)
-plt.show()
+    figure = plt.gcf() #getting the entire plotted figure
+    figure.set_size_inches(16, 7.45)
+
+    plt.title('Graph')
+    plt.xlabel('Frequency')
+    plt.ylabel('Decibals')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    plt.savefig('plot.png', dpi=100)
+    plt.show()
+
+plot_graph()
