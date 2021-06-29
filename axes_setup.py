@@ -14,4 +14,3 @@ def setter(ax, ticker, plt):
     ax.yaxis.set_major_locator(ticker.FixedLocator((majorvaluey)))
     ax.yaxis.set_major_formatter(ticker.FixedFormatter((majorvaluey)))
     ax.set_ylim(30, 85)
-

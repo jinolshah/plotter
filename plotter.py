@@ -8,9 +8,9 @@ from scipy.signal import savgol_filter
 
 def plot_graph():
 
-    rec_iems = ['fqq']  # list of names from phonebook returned by search function
+    rec_iems = ['fqq', 'innerfidelity']  # list of names from phonebook returned by search function
     # find file name and make another list for it
-    rec_ref = []
+    rec_ref = ['harman']
     rec_baseline = ''
     zoom = None
     
@@ -47,8 +47,8 @@ def plot_graph():
     r = 0
     for reference in rec_ref:
         ref.append(iem(reference))
-        if not ref[i].file:
-            print(f'Files for {ref[i].name} missing')
+        if not ref[r].file:
+            print(f'Files for {ref[r].name} missing')
             return
         r += 1
 
@@ -56,10 +56,10 @@ def plot_graph():
     normal = 1000
     at = 60
 
-    for iem in iems:
-        dB_1000 = iem.f(normal) - at
-        for value in range(len(iem.unfilt_new_y)):
-            iem.unfilt_new_y[value] = iem.unfilt_new_y[value] - dB_1000
+    for dev in iems:
+        dB_1000 = dev.f(normal) - at
+        for value in range(len(dev.unfilt_new_y)):
+            dev.unfilt_new_y[value] = dev.unfilt_new_y[value] - dB_1000
 
     #baselining
     if rec_baseline:
@@ -67,12 +67,12 @@ def plot_graph():
         if not baseline.file:
             print(f'Files for {baseline.name} missing')
             return
-        for iem in iems:
-            for i in range(len(iem.unfilt_new_y)):
-                iem.unfilt_new_y[i] -= baseline.unfilt_new_y[i]
-                iem.unfilt_new_y[i] += 60
+        for dev in iems:
+            for i in range(len(dev.unfilt_new_y)):
+                dev.unfilt_new_y[i] -= baseline.unfilt_new_y[i]
+                dev.unfilt_new_y[i] += 60
         for reference in ref:
-            for i in range(len(iem.unfilt_new_y)):
+            for i in range(len(reference.unfilt_new_y)):
                 reference.unfilt_new_y[i] -= baseline.unfilt_new_y[i]
                 reference.unfilt_new_y[i] += 60
 
@@ -81,9 +81,9 @@ def plot_graph():
         new_y = savgol_filter(reference.unfilt_new_y, 301, 3)
         ax = plt.plot(new_x, new_y, lw=2.2, label=reference.name, color='#9ea0a6', linestyle='--')
 
-    for iem in iems:
-        new_y = savgol_filter(iem.unfilt_new_y, 301, 3)
-        ax = plt.plot(new_x, new_y, lw=2.2, label=iem.name)
+    for dev in iems:
+        new_y = savgol_filter(dev.unfilt_new_y, 301, 3)
+        ax = plt.plot(new_x, new_y, lw=2.2, label=dev.name)
 
     if rec_baseline:
         ax = plt.plot([20, 20000], [60, 60], lw=2.2, label=baseline.name, color='#9ea0a6', linestyle='--')
