@@ -8,15 +8,16 @@ from scipy.signal import savgol_filter
 
 
 rec_iems = ['fqq', 'innerfidelity']  # Can match user input with entries in a database and get a list of names with filenames
-iem_filename = []
+iem_filename = ['fqq', 'innerfidelity']
 rec_ref = ['harman']
-ref_filename = []
+ref_filename = ['harman']
 rec_baseline = ''
 base_filename = ''
 zoom = None
+normhz = 1000
+normdb = 60
 
-
-def plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base_filename, zoom):
+def plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base_filename, normhz, normdb, zoom):
     
     iems = []
     ref = []
@@ -25,10 +26,10 @@ def plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base
     plt.axvline(x=2000, color='k', lw=1)
 
     class iem:
-        def __init__ (self, device_name): # get filename as argument as well
+        def __init__ (self, device_name, file_name): # get filename as argument as well
             self.name = device_name # find from phonebook
-            # self.filename = find from phonebook
-            self.x, self.y = extract(device_name) # replace device_name with self.filename
+            self.filename = file_name
+            self.x, self.y = extract(self.filename) # replace device_name with self.filename
             try:
                 self.f = interp1d(self.x, self.y, kind='linear')
                 self.unfilt_new_y = self.f(new_x)
@@ -42,7 +43,7 @@ def plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base
     # gathering data
     i = 0
     for device in rec_iems:
-        iems.append(iem(device))
+        iems.append(iem(device, iem_filename[i]))
         if not iems[i].file:
             print(f'Files for {iems[i].name} missing')
             return
@@ -50,24 +51,29 @@ def plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base
 
     r = 0
     for reference in rec_ref:
-        ref.append(iem(reference))
+        ref.append(iem(reference, ref_filename[r]))
         if not ref[r].file:
             print(f'Files for {ref[r].name} missing')
             return
         r += 1
 
-    #normalizing 1000Hz at 60dB
-    normal = 1000
-    at = 60
+    #normalizing
+    normal = normhz
+    at = normdb
 
     for dev in iems:
-        dB_1000 = dev.f(normal) - at
+        dB_norm = dev.f(normal) - at
         for value in range(len(dev.unfilt_new_y)):
-            dev.unfilt_new_y[value] = dev.unfilt_new_y[value] - dB_1000
+            dev.unfilt_new_y[value] = dev.unfilt_new_y[value] - dB_norm
+    
+    for reference in ref:
+        dB_norm = reference.f(normal) - at
+        for value in range(len(reference.unfilt_new_y)):
+            reference.unfilt_new_y[value] = reference.unfilt_new_y[value] - dB_norm
 
     #baselining
     if rec_baseline:
-        baseline = iem(rec_baseline)
+        baseline = iem(rec_baseline, base_filename)
         if not baseline.file:
             print(f'Files for {baseline.name} missing')
             return
@@ -118,4 +124,4 @@ def plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base
     plt.savefig('plot.png', dpi=100)
     plt.show()
 
-plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base_filename, zoom)
+plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base_filename, normhz, normdb, zoom)
