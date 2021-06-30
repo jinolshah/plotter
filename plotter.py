@@ -6,13 +6,17 @@ from axes_setup import *
 from scipy.interpolate import interp1d
 from scipy.signal import savgol_filter
 
-def plot_graph():
 
-    rec_iems = ['fqq', 'innerfidelity']  # list of names from phonebook returned by search function
-    # find file name and make another list for it
-    rec_ref = ['harman']
-    rec_baseline = ''
-    zoom = None
+rec_iems = ['fqq', 'innerfidelity']  # Can match user input with entries in a database and get a list of names with filenames
+iem_filename = []
+rec_ref = ['harman']
+ref_filename = []
+rec_baseline = ''
+base_filename = ''
+zoom = None
+
+
+def plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base_filename, zoom):
     
     iems = []
     ref = []
@@ -114,4 +118,4 @@ def plot_graph():
     plt.savefig('plot.png', dpi=100)
     plt.show()
 
-plot_graph()
+plot_graph(rec_iems, iem_filename, rec_ref, ref_filename, rec_baseline, base_filename, zoom)
